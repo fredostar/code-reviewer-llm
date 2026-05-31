@@ -1,23 +1,28 @@
 from dataclasses import dataclass
 from enum import Enum
 
-class ReviewKind(str, Enum):
-    CODE_REVIEW = "code_review"
-    SECURITY = "security"
+class Severity(str, Enum):
+    INFO = "info"
+    WARNING = "warning"
+    CRITICAL = "critical"
 
-@dataclass(frozen=True, slots=True)
-class ReviewRequest:
-    provider: str          # "gitlab" | "github"
-    project: str           # "group/project" ou "owner/repo"
-    ref: str               # branche ou SHA
-    kind: ReviewKind
-
-@dataclass(frozen=True, slots=True)
-class SourceFile:
+@dataclass(frozen=True)
+class FileToReview:
     path: str
     content: str
+    language: str
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
+class FileAnalysis:
+    path: str
+    summary: str
+    issues: list[str]
+    suggestions: list[str]
+    severity: Severity
+
+@dataclass(frozen=True)
 class ReviewReport:
-    request: ReviewRequest
-    markdown: str
+    repo_name: str
+    branch: str
+    files_analyzed: list[FileAnalysis]
+    overall_summary: str

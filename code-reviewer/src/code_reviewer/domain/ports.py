@@ -1,12 +1,15 @@
 from typing import Protocol
-from .models import ReviewRequest, ReviewReport, SourceFile
 
-class SourceRepository(Protocol):
-    async def fetch_files(self, request: ReviewRequest) -> list[SourceFile]: ...
+from code_reviewer.domain.models import FileToReview, FileAnalysis, ReviewReport
 
-class CodeReviewer(Protocol):
-    async def review(self, request: ReviewRequest,
-                     files: list[SourceFile]) -> str: ...   # renvoie le corps markdown
+class RepoFetcher(Protocol):
+    """Récupère les fichiers d'un dépôt distant."""
+    async def fetch_files(self, repo: str, branch: str = "main") -> list[FileToReview]: ...
 
-class ReportRenderer(Protocol):
-    def render(self, request: ReviewRequest, body: str) -> ReviewReport: ...
+class CodeAnalyzer(Protocol):
+    """Analyse un fichier via un LLM et retourne un diagnostic."""
+    async def analyze(self, file: FileToReview) -> FileAnalysis: ...
+
+class ReportWriter(Protocol):
+    """Produit le rapport final dans un format donné."""
+    def write(self, report: ReviewReport, output_path: str) -> str: ...
