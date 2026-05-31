@@ -1,10 +1,13 @@
 import pytest
-from code_reviewer.domain.models import FileToReview, FileAnalysis, Severity, ReviewReport
-from code_reviewer.review.reviewer import CodeReviewer
+
+from code_reviewer.application.review_service import ReviewService
+from code_reviewer.domain.models import FileAnalysis, FileToReview, Severity
+
 
 class FakeFetcher:
     async def fetch_files(self, repo, branch="main"):
         return [FileToReview(path="app.py", content="print('hello')", language="python")]
+
 
 class FakeAnalyzer:
     async def analyze(self, file):
@@ -16,21 +19,13 @@ class FakeAnalyzer:
             severity=Severity.INFO,
         )
 
-class FakeWriter:
-    def __init__(self):
-        self.last_report = None
-    def write(self, report, output_path):
-        self.last_report = report
-        return output_path
 
 @pytest.mark.asyncio
 async def test_review_produces_report():
-    writer = FakeWriter()
-    reviewer = CodeReviewer(FakeFetcher(), FakeAnalyzer(), writer)
+    service = ReviewService(FakeFetcher(), FakeAnalyzer())
+    report = await service.run("owner/repo", "main")
 
-    path = await reviewer.review("owner/repo", "main", "out.md")
-
-    assert path == "out.md"
-    assert writer.last_report is not None
-    assert len(writer.last_report.files_analyzed) == 1
-    assert writer.last_report.files_analyzed[0].severity == Severity.INFO
+    assert report.repo_name == "owner/repo"
+    assert report.branch == "main"
+    assert len(report.files_analyzed) == 1
+    assert report.files_analyzed[0].severity == Severity.INFO
