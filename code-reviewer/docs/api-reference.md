@@ -1,12 +1,12 @@
-# code-reviewer — API Reference
+# code-reviewer — Référence API
 
 ## Endpoints
 
 ### `GET /health`
 
-Returns the service health status.
+Retourne l'état de santé du service.
 
-**Response**
+**Réponse**
 
 `200 OK`
 
@@ -18,22 +18,22 @@ Returns the service health status.
 
 ### `POST /reviews`
 
-Triggers a code review for a repository at a given Git reference. Fetches source files from the VCS provider, analyzes each one, and returns a Markdown-formatted report.
+Déclenche une revue de code pour un dépôt à une référence Git donnée. Récupère les fichiers sources depuis le fournisseur VCS, analyse chacun d'eux, et retourne un rapport au format Markdown.
 
-**Query parameters**
+**Paramètres de requête**
 
-| Parameter | Type | Required | Description |
+| Paramètre | Type | Requis | Description |
 |---|---|---|---|
-| `provider` | `"github" \| "gitlab"` | Yes | VCS provider to fetch files from |
-| `project` | string | Yes | Project identifier. For GitHub: `owner/repo`. For GitLab: numeric project ID or `namespace/path` |
-| `ref` | string | Yes | Branch name, tag, or commit SHA |
-| `kind` | `"code_review" \| "security"` | Yes | Review type. Determines the analysis prompt sent to the LLM |
+| `provider` | `"github" \| "gitlab"` | Oui | Fournisseur VCS depuis lequel récupérer les fichiers |
+| `project` | string | Oui | Identifiant du projet. Pour GitHub : `owner/repo`. Pour GitLab : ID numérique du projet ou `namespace/path` |
+| `ref` | string | Oui | Nom de branche, tag ou SHA de commit |
+| `kind` | `"code_review" \| "security"` | Oui | Type de revue. Détermine le prompt d'analyse envoyé au LLM |
 
-**Response**
+**Réponse**
 
 `200 OK` — `Content-Type: text/markdown`
 
-A Markdown document structured as follows:
+Un document Markdown structuré comme suit :
 
 ```markdown
 # Code Review — {project} @ {ref}
@@ -47,91 +47,91 @@ A Markdown document structured as follows:
 {file_summary}
 
 ### Issues
-- {issue description}
+- {description du problème}
 
 ### Suggestions
-- {suggestion description}
+- {description de la suggestion}
 ```
 
-**Errors**
+**Erreurs**
 
 | Code | Condition |
 |---|---|
-| `422` | Missing or invalid query parameter |
-| `502` | Upstream HTTP error (GitHub or Mistral API returned a non-2xx status) |
-| `502` | GitLab API error (authentication failure, project not found, etc.) |
+| `422` | Paramètre de requête manquant ou invalide |
+| `502` | Erreur HTTP en amont (l'API GitHub ou Mistral a retourné un statut non-2xx) |
+| `502` | Erreur API GitLab (échec d'authentification, projet introuvable, etc.) |
 
 ---
 
 ## Configuration
 
-All settings are read from environment variables prefixed with `CR_`. No configuration file is required.
+Tous les paramètres sont lus depuis des variables d'environnement préfixées par `CR_`. Aucun fichier de configuration n'est requis.
 
-| Variable | Type | Default | Description |
+| Variable | Type | Défaut | Description |
 |---|---|---|---|
-| `CR_GITHUB_TOKEN` | string | `""` | GitHub personal access token. Required when `provider=github` |
-| `CR_GITLAB_URL` | string | `"https://gitlab.com"` | GitLab instance base URL. Override for self-hosted instances |
-| `CR_GITLAB_TOKEN` | string | `""` | GitLab private token. Required when `provider=gitlab` |
-| `CR_MISTRAL_API_KEY` | string | `""` | Mistral AI API key. Required for all review requests |
-| `CR_MAX_FILES_PER_REVIEW` | integer | `20` | Maximum number of files fetched and analyzed per request. Files beyond this limit are silently skipped |
+| `CR_GITHUB_TOKEN` | string | `""` | Token d'accès personnel GitHub. Requis quand `provider=github` |
+| `CR_GITLAB_URL` | string | `"https://gitlab.com"` | URL de base de l'instance GitLab. À surcharger pour les instances auto-hébergées |
+| `CR_GITLAB_TOKEN` | string | `""` | Token privé GitLab. Requis quand `provider=gitlab` |
+| `CR_MISTRAL_API_KEY` | string | `""` | Clé API Mistral AI. Requise pour toutes les requêtes de revue |
+| `CR_MAX_FILES_PER_REVIEW` | integer | `20` | Nombre maximum de fichiers récupérés et analysés par requête. Les fichiers au-delà de cette limite sont silencieusement ignorés |
 
 ---
 
-## Data models
+## Modèles de données
 
 ### `ReviewKind`
 
-| Value | Description |
+| Valeur | Description |
 |---|---|
-| `code_review` | General code review: bugs, code smells, bad practices |
-| `security` | Security-focused review: vulnerabilities, secret exposure, authorization flaws |
+| `code_review` | Revue de code générale : bugs, code smells, mauvaises pratiques |
+| `security` | Revue axée sécurité : vulnérabilités, exposition de secrets, failles d'autorisation |
 
 ---
 
 ### `Severity`
 
-| Value | Meaning |
+| Valeur | Signification |
 |---|---|
-| `info` | No significant issues found |
-| `warning` | Code smells, bad practices, or minor issues |
-| `critical` | Security vulnerability or blocking bug |
+| `info` | Aucun problème significatif trouvé |
+| `warning` | Code smells, mauvaises pratiques ou problèmes mineurs |
+| `critical` | Vulnérabilité de sécurité ou bug bloquant |
 
-The severity of a `FileAnalysis` is determined by the LLM during the `finalize` tool call, based on what was found in that file.
+La sévérité d'une `FileAnalysis` est déterminée par le LLM lors de l'appel à l'outil `finalize`, en fonction de ce qui a été trouvé dans ce fichier.
 
 ---
 
 ### `FileAnalysis`
 
-Produced for each file analyzed. Embedded in the `ReviewReport`.
+Produit pour chaque fichier analysé. Intégré dans le `ReviewReport`.
 
-| Field | Type | Description |
+| Champ | Type | Description |
 |---|---|---|
-| `path` | string | File path relative to repository root |
-| `summary` | string | 1–2 sentence summary of the file's analysis |
-| `issues` | `list[string]` | Issues found (bugs, security flaws, code smells). May be empty |
-| `suggestions` | `list[string]` | Improvement suggestions. May be empty |
-| `severity` | `Severity` | Overall severity for this file |
+| `path` | string | Chemin du fichier relatif à la racine du dépôt |
+| `summary` | string | Résumé en 1 à 2 phrases de l'analyse du fichier |
+| `issues` | `list[string]` | Problèmes trouvés (bugs, failles de sécurité, code smells). Peut être vide |
+| `suggestions` | `list[string]` | Suggestions d'amélioration. Peut être vide |
+| `severity` | `Severity` | Sévérité globale pour ce fichier |
 
 ---
 
 ### `ReviewReport`
 
-The top-level object assembled by `ReviewService` and rendered to Markdown.
+L'objet de niveau supérieur assemblé par `ReviewService` et rendu en Markdown.
 
-| Field | Type | Description |
+| Champ | Type | Description |
 |---|---|---|
-| `repo_name` | string | Value of the `project` query parameter |
-| `branch` | string | Value of the `ref` query parameter |
-| `files_analyzed` | `list[FileAnalysis]` | One entry per file that was fetched and analyzed |
-| `overall_summary` | string | Concatenation of each file's summary, separated by newlines |
+| `repo_name` | string | Valeur du paramètre de requête `project` |
+| `branch` | string | Valeur du paramètre de requête `ref` |
+| `files_analyzed` | `list[FileAnalysis]` | Une entrée par fichier récupéré et analysé |
+| `overall_summary` | string | Concaténation des résumés de chaque fichier, séparés par des sauts de ligne |
 
 ---
 
-## Supported file extensions
+## Extensions de fichiers supportées
 
-Both source adapters (GitHub and GitLab) only fetch files matching the following extensions. Files with other extensions are silently ignored during the fetch phase.
+Les deux adaptateurs sources (GitHub et GitLab) ne récupèrent que les fichiers correspondant aux extensions suivantes. Les fichiers avec d'autres extensions sont silencieusement ignorés lors de la phase de récupération.
 
-| Extension | Language |
+| Extension | Langage |
 |---|---|
 | `.py` | Python |
 | `.java` | Java |

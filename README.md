@@ -1,15 +1,15 @@
 # code-reviewer
 
-HTTP service that automates code review using Mistral AI. Point it at a GitHub or GitLab repository, and it returns a Markdown report listing issues, suggestions, and severity for each file.
+Service HTTP qui automatise la revue de code via Mistral AI. Pointez-le vers un dépôt GitHub ou GitLab, et il retourne un rapport Markdown listant les problèmes, suggestions et niveau de sévérité pour chaque fichier.
 
 ## Documentation
 
-- [Architecture](code-reviewer/docs/architecture.md) — how the service works, design decisions, the LLM agentic loop
-- [API Reference](code-reviewer/docs/api-reference.md) — endpoints, configuration variables, data models
+- [Architecture](code-reviewer/docs/architecture.md) — fonctionnement du service, décisions de conception, boucle agentique LLM
+- [Référence API](code-reviewer/docs/api-reference.md) — endpoints, variables de configuration, modèles de données
 
-## Quick start
+## Démarrage rapide
 
-**Prerequisites**: Python 3.13+, [uv](https://docs.astral.sh/uv/)
+**Prérequis** : Python 3.13+, [uv](https://docs.astral.sh/uv/)
 
 ```bash
 git clone <repo-url>
@@ -17,26 +17,26 @@ cd code-reviewer-llm/code-reviewer
 uv sync
 ```
 
-Set the required environment variables:
+Définissez les variables d'environnement requises :
 
 ```bash
-export CR_MISTRAL_API_KEY=your-mistral-key
+export CR_MISTRAL_API_KEY=votre-clé-mistral
 
-# For GitHub reviews
-export CR_GITHUB_TOKEN=your-github-token
+# Pour les revues GitHub
+export CR_GITHUB_TOKEN=votre-token-github
 
-# For GitLab reviews (self-hosted: also set CR_GITLAB_URL)
-export CR_GITLAB_TOKEN=your-gitlab-token
+# Pour les revues GitLab (instance auto-hébergée : définir aussi CR_GITLAB_URL)
+export CR_GITLAB_TOKEN=votre-token-gitlab
 ```
 
-Start the API:
+Démarrez l'API :
 
 ```bash
 uv run code-reviewer
 # → http://localhost:8000
 ```
 
-Trigger a review:
+Déclenchement d'une revue :
 
 ```bash
 curl -s -X POST \

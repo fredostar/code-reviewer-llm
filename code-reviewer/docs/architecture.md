@@ -1,76 +1,76 @@
-# Understanding code-reviewer
+# Comprendre code-reviewer
 
-## What this service does
+## Ce que fait ce service
 
-code-reviewer is an HTTP service that automates code review using a language model. Given a pointer to a Git repository — a provider (GitHub or GitLab), a project name, and a branch or commit reference — it fetches the source files, sends each one to Mistral AI for analysis, and returns a structured Markdown report listing issues, suggestions, and an overall summary.
+code-reviewer est un service HTTP qui automatise la revue de code à l'aide d'un modèle de langage. En lui fournissant un pointeur vers un dépôt Git — un fournisseur (GitHub ou GitLab), un nom de projet et une référence de branche ou de commit — il récupère les fichiers sources, envoie chacun à Mistral AI pour analyse, et retourne un rapport Markdown structuré listant les problèmes, suggestions et un résumé global.
 
-The service is intentionally narrow: it does not comment on pull requests directly, it does not integrate with CI pipelines, and it does not retain state between calls. Each `POST /reviews` request is fully self-contained.
-
----
-
-## Hexagonal architecture (ports and adapters)
-
-The codebase follows a hexagonal (ports and adapters) architecture. The core business logic lives in the `domain/` and `application/` layers and depends on no external library. All interactions with the outside world — VCS providers, the LLM API, the output format — are mediated through `Protocol` interfaces defined in `domain/ports.py`.
-
-Three ports structure the entire system:
-
-**`RepoFetcher`** — knows how to retrieve a list of files for a given `ReviewRequest`. The domain doesn't know whether those files come from GitHub, GitLab, or anywhere else. Two adapters implement it: `GithubSource` (httpx against the GitHub REST API) and `GitlabSource` (python-gitlab SDK, offloaded to a thread pool via `asyncio.to_thread` because the SDK is synchronous).
-
-**`CodeAnalyzer`** — knows how to analyze a single file and produce a `FileAnalysis`. One adapter implements it today: `MistralAnalyzer`. Swapping in a different LLM requires only writing a new adapter that satisfies the protocol.
-
-**`MarkdownRenderer`** — knows how to turn a `ReviewReport` into a string. One adapter: `MarkdownRenderer`, which produces a straightforward Markdown document.
-
-This structure makes the core logic testable in isolation using plain Python classes, with no mocking framework and no real network calls.
+Le service est délibérément limité dans sa portée : il ne commente pas directement les pull requests, ne s'intègre pas dans les pipelines CI, et ne conserve aucun état entre les appels. Chaque requête `POST /reviews` est entièrement autonome.
 
 ---
 
-## Request flow
+## Architecture hexagonale (ports et adaptateurs)
 
-A `POST /reviews` call travels through four layers:
+Le code suit une architecture hexagonale (ports et adaptateurs). La logique métier principale se trouve dans les couches `domain/` et `application/` et ne dépend d'aucune bibliothèque externe. Toutes les interactions avec le monde extérieur — fournisseurs VCS, l'API LLM, le format de sortie — sont médiatisées via des interfaces `Protocol` définies dans `domain/ports.py`.
+
+Trois ports structurent l'ensemble du système :
+
+**`RepoFetcher`** — sait comment récupérer une liste de fichiers pour une `ReviewRequest` donnée. La couche domaine ne sait pas si ces fichiers proviennent de GitHub, GitLab ou ailleurs. Deux adaptateurs l'implémentent : `GithubSource` (httpx vers l'API REST GitHub) et `GitlabSource` (SDK python-gitlab, délégué à un thread pool via `asyncio.to_thread` car le SDK est synchrone).
+
+**`CodeAnalyzer`** — sait comment analyser un fichier unique et produire une `FileAnalysis`. Un seul adaptateur l'implémente aujourd'hui : `MistralAnalyzer`. Remplacer le LLM ne nécessite que d'écrire un nouvel adaptateur satisfaisant le protocole.
+
+**`MarkdownRenderer`** — sait comment transformer un `ReviewReport` en chaîne de caractères. Un seul adaptateur : `MarkdownRenderer`, qui produit un document Markdown simple.
+
+Cette structure rend la logique principale testable de façon isolée avec de simples classes Python, sans framework de mock ni appel réseau réel.
+
+---
+
+## Flux d'une requête
+
+Un appel `POST /reviews` traverse quatre couches :
 
 ```
-HTTP request
-    └── FastAPI endpoint (main.py)
+Requête HTTP
+    └── Endpoint FastAPI (main.py)
             └── ReviewService.run()
                     ├── RepoFetcher.fetch_files()   → list[FileToReview]
-                    ├── CodeAnalyzer.analyze()       → FileAnalysis  (once per file)
-                    └── assemble ReviewReport
+                    ├── CodeAnalyzer.analyze()       → FileAnalysis  (une fois par fichier)
+                    └── assemblage du ReviewReport
             └── MarkdownRenderer.render()
-HTTP response (text/markdown)
+Réponse HTTP (text/markdown)
 ```
 
-`ReviewService` is the only application-layer class. It selects the right `RepoFetcher` by looking up `request.provider` in a dictionary (`{"github": GithubSource(...), "gitlab": GitlabSource(...)}`), then sequentially fetches and analyzes each file. Files are analyzed one at a time, not in parallel — this is intentional to avoid hammering the Mistral rate limits.
+`ReviewService` est la seule classe de la couche application. Elle sélectionne le bon `RepoFetcher` en cherchant `request.provider` dans un dictionnaire (`{"github": GithubSource(...), "gitlab": GitlabSource(...)}`), puis récupère et analyse chaque fichier séquentiellement. Les fichiers sont analysés un par un, pas en parallèle — c'est délibéré pour éviter de saturer les limites de débit de Mistral.
 
 ---
 
-## The MistralAnalyzer agentic loop
+## La boucle agentique de MistralAnalyzer
 
-Rather than asking Mistral to return a structured JSON object in a single call, `MistralAnalyzer` drives a multi-turn tool-calling loop. The model is given three tools:
+Plutôt que de demander à Mistral de retourner un objet JSON structuré en un seul appel, `MistralAnalyzer` pilote une boucle multi-tours d'appels d'outils. Le modèle dispose de trois outils :
 
-- `report_issue(description)` — call once for each bug, security flaw, or code smell detected
-- `report_suggestion(description)` — call once for each improvement idea
-- `finalize(summary, severity)` — call last, exactly once, to close the analysis
+- `report_issue(description)` — appelé une fois pour chaque bug, faille de sécurité ou code smell détecté
+- `report_suggestion(description)` — appelé une fois pour chaque idée d'amélioration
+- `finalize(summary, severity)` — appelé en dernier, exactement une fois, pour clore l'analyse
 
-The loop runs for up to 10 turns. It exits early when `finalize` is called or when the model returns plain text instead of a tool call (a fallback for cases where the model decides it has nothing to report).
+La boucle s'exécute jusqu'à 10 tours. Elle s'arrête prématurément quand `finalize` est appelé ou quand le modèle retourne du texte brut au lieu d'un appel d'outil (cas de repli quand le modèle décide de ne rien signaler).
 
-This approach has two advantages over a single structured-output call. First, it lets the model "think out loud" across multiple turns, which tends to produce more thorough analysis on complex files. Second, `report_issue` and `report_suggestion` accumulate incrementally — the model doesn't need to hold the entire list in one generation, which reduces truncation risk on large files.
+Cette approche présente deux avantages par rapport à un appel à sortie structurée unique. D'abord, elle permet au modèle de "réfléchir à voix haute" sur plusieurs tours, ce qui tend à produire une analyse plus approfondie sur les fichiers complexes. Ensuite, `report_issue` et `report_suggestion` s'accumulent de façon incrémentale — le modèle n'a pas besoin de tenir toute la liste en une seule génération, ce qui réduit le risque de troncature sur les grands fichiers.
 
-The system prompt varies by `ReviewKind`: a `code_review` request instructs the model to look for bugs and code smells; a `security` request focuses it on vulnerabilities, secret exposure, and authorization flaws.
-
----
-
-## Design decisions worth knowing
-
-**`asyncio.to_thread` for GitLab** — The python-gitlab SDK is synchronous and blocks the event loop when called directly from an `async` method. `GitlabSource` wraps all SDK calls in a single `asyncio.to_thread(_fetch_sync, request)` call, offloading the blocking I/O to a worker thread. This keeps the FastAPI event loop responsive while the GitLab API is queried.
-
-**`max_files_per_review`** — Fetching and analyzing every file in a large repository would exhaust Mistral's rate limit and take minutes. The limit (default: 20, configurable via `CR_MAX_FILES_PER_REVIEW`) is applied inside each adapter's fetch loop, so file content is never downloaded beyond the cap. It is not applied after fetching — this avoids downloading hundreds of files only to discard most of them.
-
-**Fixed file extension allowlist** — Both source adapters only fetch files matching `.py .java .kt .ts .js`. This is a deliberate scope constraint: LLM-based review works best on high-level application code, and extending to configuration files, templates, or data files would produce noise. The allowlist lives as a module-level constant `_EXTENSIONS` in each adapter.
-
-**`ReviewKind` as a prompt switch** — The `kind` parameter doesn't change the tools available to the model, only the system prompt. A security review and a code review produce the same `FileAnalysis` shape. This keeps the domain model stable while allowing the model's focus to shift significantly depending on what the caller cares about.
+Le prompt système varie selon le `ReviewKind` : une requête `code_review` demande au modèle de chercher bugs et code smells ; une requête `security` le concentre sur les vulnérabilités, l'exposition de secrets et les failles d'autorisation.
 
 ---
 
-## Related resources
+## Décisions de conception à connaître
 
-- [API Reference](api-reference.md) — endpoints, parameters, configuration variables, data model
+**`asyncio.to_thread` pour GitLab** — Le SDK python-gitlab est synchrone et bloque la boucle d'événements lorsqu'il est appelé directement depuis une méthode `async`. `GitlabSource` encapsule tous les appels SDK dans un unique appel `asyncio.to_thread(_fetch_sync, request)`, délégant les I/O bloquantes à un thread worker. Cela maintient la réactivité de la boucle d'événements FastAPI pendant que l'API GitLab est interrogée.
+
+**`max_files_per_review`** — Récupérer et analyser tous les fichiers d'un grand dépôt épuiserait les limites de débit de Mistral et prendrait plusieurs minutes. La limite (par défaut : 20, configurable via `CR_MAX_FILES_PER_REVIEW`) est appliquée à l'intérieur de la boucle de récupération de chaque adaptateur, de sorte que le contenu des fichiers n'est jamais téléchargé au-delà du seuil. Elle n'est pas appliquée après récupération — cela évite de télécharger des centaines de fichiers pour en rejeter la plupart.
+
+**Liste blanche d'extensions fixe** — Les deux adaptateurs sources ne récupèrent que les fichiers correspondant à `.py .java .kt .ts .js`. C'est une contrainte de périmètre délibérée : la revue basée sur LLM fonctionne mieux sur du code applicatif de haut niveau, et l'étendre aux fichiers de configuration, templates ou données produirait du bruit. La liste blanche est une constante de niveau module `_EXTENSIONS` dans chaque adaptateur.
+
+**`ReviewKind` comme commutateur de prompt** — Le paramètre `kind` ne change pas les outils disponibles pour le modèle, seulement le prompt système. Une revue de sécurité et une revue de code produisent la même structure `FileAnalysis`. Cela maintient le modèle de domaine stable tout en permettant au focus du modèle de changer significativement selon ce que l'appelant recherche.
+
+---
+
+## Ressources associées
+
+- [Référence API](api-reference.md) — endpoints, paramètres, variables de configuration, modèle de données
