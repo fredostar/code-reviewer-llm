@@ -1,16 +1,17 @@
 import json
+from typing import Any
 
 import httpx
 import respx
 
 from code_reviewer.adapters.mistral_analyzer import MistralAnalyzer
 from code_reviewer.config import Settings
-from code_reviewer.domain.models import FileToReview, Severity
+from code_reviewer.domain.models import FileToReview, ReviewKind, Severity
 
 _CHAT_URL = "https://api.mistral.ai/v1/chat/completions"
 
 
-def _tool_call_response(name: str, args: dict, call_id: str) -> dict:
+def _tool_call_response(name: str, args: dict[str, Any], call_id: str) -> dict[str, Any]:
     return {
         "id": "chat-1",
         "object": "chat.completion",
@@ -33,7 +34,7 @@ def _tool_call_response(name: str, args: dict, call_id: str) -> dict:
     }
 
 
-def _text_response(content: str) -> dict:
+def _text_response(content: str) -> dict[str, Any]:
     return {
         "id": "chat-2",
         "object": "chat.completion",
@@ -49,7 +50,7 @@ def _text_response(content: str) -> dict:
 
 
 @respx.mock
-async def test_analyze_collects_issues_and_finalizes():
+async def test_analyze_collects_issues_and_finalizes() -> None:
     respx.post(_CHAT_URL).mock(side_effect=[
         httpx.Response(200, json=_tool_call_response(
             "report_issue", {"description": "Variable non typée"}, "c1"
@@ -65,7 +66,7 @@ async def test_analyze_collects_issues_and_finalizes():
     analyzer = MistralAnalyzer(Settings(mistral_api_key="fake-key"))
     file = FileToReview(path="app.py", content="x = 1", language="python")
 
-    result = await analyzer.analyze(file)
+    result = await analyzer.analyze(file, ReviewKind.CODE_REVIEW)
 
     assert result.path == "app.py"
     assert result.issues == ["Variable non typée"]
@@ -75,7 +76,7 @@ async def test_analyze_collects_issues_and_finalizes():
 
 
 @respx.mock
-async def test_analyze_stops_early_on_text_response():
+async def test_analyze_stops_early_on_text_response() -> None:
     respx.post(_CHAT_URL).mock(return_value=httpx.Response(
         200, json=_text_response("Rien à signaler.")
     ))
@@ -83,7 +84,7 @@ async def test_analyze_stops_early_on_text_response():
     analyzer = MistralAnalyzer(Settings(mistral_api_key="fake-key"))
     file = FileToReview(path="ok.py", content="pass", language="python")
 
-    result = await analyzer.analyze(file)
+    result = await analyzer.analyze(file, ReviewKind.CODE_REVIEW)
 
     assert result.summary == "Analyse terminée"
     assert result.issues == []

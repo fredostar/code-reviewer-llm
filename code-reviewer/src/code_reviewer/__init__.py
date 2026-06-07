@@ -1,2 +1,5 @@
+import uvicorn
+
+
 def main() -> None:
-    print("Hello from code-reviewer!")
+    uvicorn.run("code_reviewer.main:app", host="0.0.0.0", port=8000, reload=True)

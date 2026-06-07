@@ -1,16 +1,32 @@
 from dataclasses import dataclass
 from enum import Enum
 
+
 class Severity(str, Enum):
     INFO = "info"
     WARNING = "warning"
     CRITICAL = "critical"
+
+
+class ReviewKind(str, Enum):
+    CODE_REVIEW = "code_review"
+    SECURITY = "security"
+
+
+@dataclass(frozen=True)
+class ReviewRequest:
+    provider: str
+    project: str
+    ref: str
+    kind: ReviewKind
+
 
 @dataclass(frozen=True)
 class FileToReview:
     path: str
     content: str
     language: str
+
 
 @dataclass(frozen=True)
 class FileAnalysis:
@@ -19,6 +35,7 @@ class FileAnalysis:
     issues: list[str]
     suggestions: list[str]
     severity: Severity
+
 
 @dataclass(frozen=True)
 class ReviewReport:
