@@ -1,0 +1,23 @@
+{
+  "skill_name": "diataxis-doc-writer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Je veux écrire de la documentation pour la fonction `sendEmail(to, subject, body)` de mon SDK Node.js. Elle accepte des options optionnelles comme `cc`, `bcc`, `attachments`.",
+      "expected_output": "Le skill doit identifier qu'il s'agit de documentation de référence (function reference), poser ou inférer les bonnes questions, puis produire un document Markdown structuré avec paramètres, types, valeurs par défaut et exemples.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Écris un how-to pour configurer un webhook GitHub qui déclenche un pipeline CI/CD sur GitLab.",
+      "expected_output": "Le skill reconnaît le type how-to, lit le guide correspondant, et produit un Markdown avec titre 'How to...', prérequis précis, étapes orientées action (voix impérative), et une section de vérification.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Voici ma doc actuelle pour la commande `deploy` de mon CLI — elle est un peu fouillis, améliore-la en suivant Diátaxis :\n\n`deploy` — Cette commande permet de déployer. Tu peux utiliser `--env production` ou `--env staging`. Il faut d'abord configurer ton fichier `.env`. Le déploiement prend en général 2-3 minutes. Pour annuler, Ctrl+C. Tu peux aussi utiliser `--dry-run` pour tester sans déployer vraiment.",
+      "expected_output": "Le skill identifie que la doc mélange du reference et du how-to, explique le problème, puis produit une version restructurée proprement — soit en référence pure pour la commande deploy, soit en séparant les deux types clairement.",
+      "files": []
+    }
+  ]
+}

@@ -1,21 +1,54 @@
-# code-reviewer-llm
+# code-reviewer
 
-Outil de revue de code automatisée propulsé par des LLMs. Il analyse le code source et produit des retours structurés sur la qualité, les bugs potentiels et les améliorations possibles.
+HTTP service that automates code review using Mistral AI. Point it at a GitHub or GitLab repository, and it returns a Markdown report listing issues, suggestions, and severity for each file.
 
-## Installation
+## Documentation
 
-**Prérequis** : Python 3.11+, [UV](https://docs.astral.sh/uv/)
+- [Architecture](code-reviewer/docs/architecture.md) — how the service works, design decisions, the LLM agentic loop
+- [API Reference](code-reviewer/docs/api-reference.md) — endpoints, configuration variables, data models
+
+## Quick start
+
+**Prerequisites**: Python 3.13+, [uv](https://docs.astral.sh/uv/)
 
 ```bash
 git clone <repo-url>
-cd code-reviewer-llm
+cd code-reviewer-llm/code-reviewer
 uv sync
 ```
 
-## Utilisation
+Set the required environment variables:
 
-> À compléter au fur et à mesure du développement.
+```bash
+export CR_MISTRAL_API_KEY=your-mistral-key
 
-## Architecture
+# For GitHub reviews
+export CR_GITHUB_TOKEN=your-github-token
 
-> À compléter au fur et à mesure du développement.
+# For GitLab reviews (self-hosted: also set CR_GITLAB_URL)
+export CR_GITLAB_TOKEN=your-gitlab-token
+```
+
+Start the API:
+
+```bash
+uv run code-reviewer
+# → http://localhost:8000
+```
+
+Trigger a review:
+
+```bash
+curl -s -X POST \
+  "http://localhost:8000/reviews?provider=github&project=owner/repo&ref=main&kind=code_review"
+```
+
+## Docker
+
+```bash
+docker build -t code-reviewer code-reviewer/
+docker run -p 8000:8000 \
+  -e CR_MISTRAL_API_KEY=... \
+  -e CR_GITHUB_TOKEN=... \
+  code-reviewer
+```

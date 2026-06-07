@@ -66,3 +66,4 @@ Reusable agent skills are in `code-reviewer/.agents/skills/`. Invoke them from C
 | `github-copilot-starter` | Scaffold a full GitHub Copilot config (instructions, skills, agents, optional Actions workflow) for a new project |
 | `dataverse-python-production-code` | Generate production Python code for the PowerPlatform Dataverse SDK (error handling, retry, OData) |
 | `dataverse-python-advanced-patterns` | Advanced Dataverse SDK patterns: batch ops, metadata, file upload, Pandas integration |
+| `diataxis-doc-writer` | Write technical documentation following the Diátaxis framework (tutorials, how-to guides, reference, explanation) |

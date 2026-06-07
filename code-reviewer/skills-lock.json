@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "skills": {
+    "dataverse-python-advanced-patterns": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/dataverse-python-advanced-patterns/SKILL.md",
+      "computedHash": "dd4f65b62c3b702c7dfc14a4e19caaa9ab3515e87a1d7e110482d9ba19469bd0"
+    },
+    "dataverse-python-production-code": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/dataverse-python-production-code/SKILL.md",
+      "computedHash": "7299422fdb42dcede45a761921656a6450c476388731288a6e5afb0303f1d25d"
+    },
+    "github-copilot-starter": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/github-copilot-starter/SKILL.md",
+      "computedHash": "7b29145c2d3255c38d7333c41e2872411f668658c2c2f4782e420400abf08175"
+    },
+    "pytest-coverage": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/pytest-coverage/SKILL.md",
+      "computedHash": "06481f4bbc6d80a52091ec9ba5856eb1dc5f80cbabb40fd4ad02aaea3085a0dc"
+    }
+  }
+}
